@@ -8,13 +8,13 @@ const port = process.env.PORT!;
 
 app.use(
   cors({
-    origin: "http://your-frontend-domain.com", 
+    origin: "http://localhost:3000", 
     methods: ["GET", "POST", "PUT", "DELETE"], 
     credentials: true, 
   })
 );
 
-app.all("/api/auth/*", toNodeHandler(auth));
+app.all("/api/auth/*splat", toNodeHandler(auth));
 
 app.use(express.json());
 
@@ -25,6 +25,10 @@ app.get("/api/me", async (req, res) => {
 	return res.json(session);
 });
 
+app.get("/",(req,res)=>{
+  res.send("ok")
+})
+
 app.listen(port, () => {
-	console.log(`Example app listening on port ${port}`);
+	console.log(`Server listening on port ${port}`);
 });

@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Propmtly",
+  title: "Coremind",
   description: "A modern developer tool that blends AI assistance directly into your workflow, helping you write, refactor, and understand code faster.",
 };
 
