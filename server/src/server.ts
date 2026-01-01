@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors"; 
 import { toNodeHandler, fromNodeHeaders } from "better-auth/node";
-import { auth } from "../lib/auth";
+import { auth } from "../lib/auth.js";
 
 const app = express();
 const port = process.env.PORT!;
