@@ -4,7 +4,7 @@
   "description": "",
   "main": "src/server.ts",
   "bin": {
-    "coremind": "./src/cli/main.ts"
+    "coremind": "./dist/src/cli/main.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

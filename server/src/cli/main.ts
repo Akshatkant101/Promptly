@@ -5,7 +5,7 @@ import chalk from "chalk";
 import figlet from "figlet";
 
 import { Command } from "commander";
-// import { login } from "./commands/auth/login.js";
+import { login } from "./commands/auth/login.js";
 
 dotenv.config();
 
@@ -20,7 +20,7 @@ async function main() {
   const program = new Command("coremind");
   program.version("1.0.0");
   program.description("A modern developer tool that blends AI assistance directly into your workflow, helping you write, refactor, and understand code faster.");
-  // program.addCommand(login);
+  program.addCommand(login);
 
   program.action(()=>{
     program.help();
