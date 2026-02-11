@@ -14,7 +14,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Coremind",
-  description: "A modern developer tool that blends AI assistance directly into your workflow, helping you write, refactor, and understand code faster.",
+  description:
+    "A modern developer tool that blends AI assistance directly into your workflow, helping you write, refactor, and understand code faster.",
 };
 
 export default function RootLayout({
@@ -24,7 +25,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body suppressHydrationWarning
+      <body
+        suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}

@@ -1,0 +1,14 @@
+node_modules
+dist
+build
+coverage
+*.lock
+package-lock.json
+.env
+.env.local
+generated
+
+
+
+
+

@@ -71,9 +71,7 @@ export default function Home() {
               <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
                 Email Address
               </p>
-              <p className="text-lg text-zinc-100 font-medium break-all">
-                {data?.user?.email}
-              </p>
+              <p className="text-lg text-zinc-100 font-medium break-all">{data?.user?.email}</p>
             </div>
           </div>
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { cancel, confirm, intro, outro, isCancel } from "@clack/prompts";
-import { logger } from "better-auth";
+import { logger, polar } from "better-auth";
 import { createAuthClient } from "better-auth/client";
 import { deviceAuthorizationClient } from "better-auth/client/plugins";
 import chalk from "chalk";
@@ -14,6 +14,8 @@ import * as z from "zod/v4";
 import dotenv from "dotenv";
 import { prisma } from "../../../../lib/prisma.js";
 import { fileURLToPath } from "url";
+import { resolve } from "dns";
+import { getStoredToken, isTokenExpired, storeToken } from "../../../../lib/token.js";
 
 // Load .env file - try server directory first, then current working directory
 const __filename = fileURLToPath(import.meta.url);
@@ -26,8 +28,12 @@ dotenv.config();
 
 const URL = "http://localhost:5000";
 const CLIENT_ID = process.env.GITHUB_CLIENT_ID;
-const CONFIG_DIR = path.join(os.homedir(), ".better-auth");
-const TOKEN_FILE = path.join(CONFIG_DIR, "token.json");
+export const CONFIG_DIR = path.join(os.homedir(), ".better-auth");
+export const TOKEN_FILE = path.join(CONFIG_DIR, "token.json");
+
+
+
+
 
 export async function loginAction(opts: Record<string, unknown>) {
   const optionsSchema = z.object({
@@ -49,9 +55,9 @@ export async function loginAction(opts: Record<string, unknown>) {
 
   intro(chalk.blue("🔐Better Auth CLI Login"));
 
-  //   chnage this with token maaagement utils
-  const existingToken = false;
-  const expired = false;
+  //   chnage this with token management utils
+  const existingToken = await getStoredToken();
+  const expired = await isTokenExpired(existingToken);
 
   if (existingToken && !expired) {
     const shouldReAuth = await confirm({
@@ -101,7 +107,7 @@ export async function loginAction(opts: Record<string, unknown>) {
     console.log(chalk.yellowBright("Device authorization required"));
     console.log(
       `Please visit ${chalk.underline.blue(
-        verification_uri || verification_uri_complete
+         verification_uri_complete || verification_uri
       )}`
     );
     console.log(`Enter Code:${chalk.bold.green(user_code)}`);
@@ -123,7 +129,25 @@ export async function loginAction(opts: Record<string, unknown>) {
         )}minutes)...`
       )
     );
-  } catch (error) {
+
+    const token = await pollForToken(
+      authClient,
+      device_code,
+      clientId,
+      interval
+    );
+
+    if(token){
+      const savedtoken=await storeToken(token)
+      if (!savedtoken){
+        logger.error("Failed to store token");
+      }
+      console.log(chalk.green("Token stored successfully"));
+      // get ueser data
+      // const user = await prisma.user.findFirst({
+    }
+
+  } catch (error) {  
     spinner.stop();
     const errorMessage =
       error instanceof Error
@@ -131,8 +155,79 @@ export async function loginAction(opts: Record<string, unknown>) {
         : typeof error === "string"
         ? error
         : JSON.stringify(error);
-    logger.error(`Unexpected error during device authorization: ${errorMessage}`);
+    logger.error(
+      `Unexpected error during device authorization: ${errorMessage}`
+    );
     process.exit(1);
+  }
+
+  async function pollForToken(
+    authClient: ReturnType<typeof createAuthClient>,
+    device_code: string,
+    clientId: string,
+    interval: number
+  ) {
+    let pollingInterval = interval;
+    const spinner = yoctoSpinner({
+      text: "Polling for token...",
+      color: "cyan",
+    });
+    let dots = 0;
+
+    return new Promise((resolve, reject) => {
+      const poll = async () => {
+        dots = (dots + 1) % 4;
+        spinner.text = chalk.gray(
+          `Polling for authorization${"."}.repeat(dots)}${""}.repeat(3-dots)}`
+        );
+        if (!spinner.isSpinning) spinner.start();
+
+        try {
+          const { data, error } = await (authClient as any).device.token({
+            grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+            device_code:device_code,
+            client_id: clientId,
+            fetchOptions: {
+              headers: {
+                "user-agent": `My CLI`,
+              },
+            },
+          });
+          if (data?.access_token) {
+            console.log(chalk.green(`Your access token is: ${data.access_token}`));
+            spinner.stop();
+            resolve(data);
+            return;
+          }
+          else if (error){
+            switch (error.error) {
+              case "authorization_pending":
+                // Continue polling
+                break;
+              case "slow_down":
+                pollingInterval += 5;
+                break;
+              case "access_denied":
+                console.error("Access was denied by the user");
+                return;
+              case "expired_token":
+                console.error("The device code has expired. Please try again.");
+                return;
+              default:
+                spinner.stop();
+                logger.error(`Error: ${error.error_description}`);
+                process.exit(1);
+            }
+          }
+        } catch (error) {
+          spinner.stop();
+          logger.error(`Unexpected error during device authorization: ${error instanceof Error ? error.message : String(error)}`);
+          process.exit(1);
+        }
+        setTimeout(poll, pollingInterval * 1000);
+      };
+      setTimeout(poll, pollingInterval * 1000);
+    });
   }
 }
 

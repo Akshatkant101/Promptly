@@ -8,23 +8,22 @@ const page = () => {
   const { data, isPending } = authClient.useSession();
   const router = useRouter();
 
-  
   if (isPending) {
     return (
       <div
-      style={{
-        backgroundImage: "url('/Oops!.jpg')",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-      }}
-      className="flex items-center justify-center h-screen text-white"
+        style={{
+          backgroundImage: "url('/Oops!.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+        className="flex items-center justify-center h-screen text-white"
       >
         <Spinner className="h-16 w-auto" />
       </div>
     );
   }
-  
+
   if (data?.session && data.user) {
     router.push("/");
   }

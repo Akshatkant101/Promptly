@@ -71,7 +71,8 @@ export const ModelName = {
     Post: 'Post',
     Session: 'Session',
     Account: 'Account',
-    Verification: 'Verification'
+    Verification: 'Verification',
+    DeviceCode: 'DeviceCode'
 };
 /**
  * Enums
@@ -130,6 +131,18 @@ export const VerificationScalarFieldEnum = {
     expiresAt: 'expiresAt',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
+};
+export const DeviceCodeScalarFieldEnum = {
+    id: 'id',
+    deviceCode: 'deviceCode',
+    userCode: 'userCode',
+    userId: 'userId',
+    expiresAt: 'expiresAt',
+    status: 'status',
+    lastPolledAt: 'lastPolledAt',
+    pollingInterval: 'pollingInterval',
+    clientId: 'clientId',
+    scope: 'scope'
 };
 export const SortOrder = {
     asc: 'asc',
