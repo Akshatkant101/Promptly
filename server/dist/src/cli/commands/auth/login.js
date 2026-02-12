@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { cancel, confirm, intro, isCancel } from "@clack/prompts";
+import { cancel, confirm, intro, outro, isCancel } from "@clack/prompts";
 import { logger } from "better-auth";
 import { createAuthClient } from "better-auth/client";
 import { deviceAuthorizationClient } from "better-auth/client/plugins";
@@ -12,7 +12,7 @@ import yoctoSpinner from "yocto-spinner";
 import * as z from "zod/v4";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
-import { getStoredToken, isTokenExpired, storeToken } from "../../../../lib/token.js";
+import { clearStoredToken, getStoredToken, isTokenExpired, requiredAuth, storeToken, } from "../../../../lib/token.js";
 // Load .env file - try server directory first, then current working directory
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -81,7 +81,7 @@ export async function loginAction(opts) {
             initialValue: true,
         });
         if (!isCancel(shouldOpen) && shouldOpen) {
-            const urlToOpen = verification_uri || verification_uri_complete;
+            const urlToOpen = verification_uri_complete || verification_uri;
             await open(urlToOpen);
         }
         console.log(chalk.yellowBright(`Waiting for authentication...(expires in ${Math.floor(expires_in / 60)}minutes)...`));
@@ -168,9 +168,79 @@ export async function loginAction(opts) {
         });
     }
 }
+export async function logutAction() {
+    intro(chalk.bold("logout from the Better Auth CLI"));
+    const token = await getStoredToken();
+    if (!token) {
+        console.log(chalk.yellow("you are not logged in"));
+        process.exit(0);
+    }
+    const shouldLogout = await confirm({
+        message: "Are you sure you want to logout?",
+        initialValue: false,
+    });
+    if (isCancel(shouldLogout) || !shouldLogout) {
+        cancel(chalk.red("Logout cancelled"));
+        process.exit(0);
+    }
+    const cleared = await clearStoredToken();
+    if (cleared) {
+        outro(chalk.green("You have been logged out successfully"));
+    }
+    else {
+        logger.error("Failed to logout");
+        console.log(chalk.red("could not clear token file "));
+    }
+}
+export async function whoamiAction(opts) {
+    const optionsSchema = z.object({
+        serverUrl: z.string().optional(),
+    });
+    const options = optionsSchema.parse(opts);
+    const serverUrl = options.serverUrl || URL;
+    const token = await requiredAuth();
+    if (!token?.access_token) {
+        console.log(chalk.red("you are not logged in"));
+        process.exit(1);
+    }
+    try {
+        const response = await fetch(`${serverUrl}/api/me`, {
+            headers: {
+                Authorization: `Bearer ${token.access_token}`,
+                "Content-Type": "application/json",
+            },
+        });
+        if (!response.ok) {
+            if (response.status === 401) {
+                console.log(chalk.red("Authentication failed. Please login again."));
+                process.exit(1);
+            }
+            throw new Error(`Failed to fetch user info: ${response.statusText}`);
+        }
+        const session = await response.json();
+        const user = session?.user;
+        if (!user) {
+            console.log(chalk.red("User information not found"));
+            process.exit(1);
+        }
+        // output user info
+        console.log(chalk.bold.greenBright(`\n user: ${user?.name || "N/A"} email: ${user?.email || "N/A"} id: ${user?.id || "N/A"}`));
+    }
+    catch (error) {
+        logger.error(`Failed to get user information: ${error instanceof Error ? error.message : String(error)}`);
+        process.exit(1);
+    }
+}
 // -------------Login Command Setup -------------
 export const login = new Command("login")
     .description("Login to the Better Auth CLI")
     .option("--server-url <url>", "The URL of the Better Auth server", URL)
     .option("--client-id <id>", "The Client ID of the Better Auth server", CLIENT_ID)
     .action(loginAction);
+export const logout = new Command("logout")
+    .description("Logout from the Better Auth CLI")
+    .action(logutAction);
+export const whoami = new Command("whoami")
+    .description("Show the current user")
+    .option("--server-url <url>", "The URL of the Better Auth server", URL)
+    .action(whoamiAction);

@@ -4,4 +4,3 @@
   "ext": "ts,json",
   "ignore": ["src/**/*.spec.ts", "src/**/*.test.ts"]
 }
-

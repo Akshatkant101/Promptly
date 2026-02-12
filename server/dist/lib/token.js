@@ -19,7 +19,9 @@ export async function storeToken(token) {
             refresh_token: token.refresh_token,
             token_type: token.token_type || "Bearer",
             scope: token.scope || "",
-            expires_at: token.expires_in ? new Date(Date.now() + token.expires_in * 1000).toISOString() : null,
+            expires_at: token.expires_in
+                ? new Date(Date.now() + token.expires_in * 1000).toISOString()
+                : null,
             created_at: new Date().toISOString(),
         };
         await fs.writeFile(TOKEN_FILE, JSON.stringify(tokenData, null, 2), "utf-8");

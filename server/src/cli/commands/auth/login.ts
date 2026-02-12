@@ -12,10 +12,15 @@ import path from "path";
 import yoctoSpinner from "yocto-spinner";
 import * as z from "zod/v4";
 import dotenv from "dotenv";
-import { prisma } from "../../../../lib/prisma.js";
 import { fileURLToPath } from "url";
 import { resolve } from "dns";
-import { getStoredToken, isTokenExpired, storeToken } from "../../../../lib/token.js";
+import {
+  clearStoredToken,
+  getStoredToken,
+  isTokenExpired,
+  requiredAuth,
+  storeToken,
+} from "../../../../lib/token.js";
 
 // Load .env file - try server directory first, then current working directory
 const __filename = fileURLToPath(import.meta.url);
@@ -30,10 +35,6 @@ const URL = "http://localhost:5000";
 const CLIENT_ID = process.env.GITHUB_CLIENT_ID;
 export const CONFIG_DIR = path.join(os.homedir(), ".better-auth");
 export const TOKEN_FILE = path.join(CONFIG_DIR, "token.json");
-
-
-
-
 
 export async function loginAction(opts: Record<string, unknown>) {
   const optionsSchema = z.object({
@@ -106,9 +107,7 @@ export async function loginAction(opts: Record<string, unknown>) {
     } = data;
     console.log(chalk.yellowBright("Device authorization required"));
     console.log(
-      `Please visit ${chalk.underline.blue(
-         verification_uri_complete || verification_uri
-      )}`
+      `Please visit ${chalk.underline.blue(verification_uri_complete || verification_uri)}`
     );
     console.log(`Enter Code:${chalk.bold.green(user_code)}`);
 
@@ -118,46 +117,36 @@ export async function loginAction(opts: Record<string, unknown>) {
     });
 
     if (!isCancel(shouldOpen) && shouldOpen) {
-      const urlToOpen = verification_uri || verification_uri_complete;
+      const urlToOpen = verification_uri_complete || verification_uri;
       await open(urlToOpen);
     }
 
     console.log(
       chalk.yellowBright(
-        `Waiting for authentication...(expires in ${Math.floor(
-          expires_in / 60
-        )}minutes)...`
+        `Waiting for authentication...(expires in ${Math.floor(expires_in / 60)}minutes)...`
       )
     );
 
-    const token = await pollForToken(
-      authClient,
-      device_code,
-      clientId,
-      interval
-    );
+    const token = await pollForToken(authClient, device_code, clientId, interval);
 
-    if(token){
-      const savedtoken=await storeToken(token)
-      if (!savedtoken){
+    if (token) {
+      const savedtoken = await storeToken(token);
+      if (!savedtoken) {
         logger.error("Failed to store token");
       }
       console.log(chalk.green("Token stored successfully"));
       // get ueser data
       // const user = await prisma.user.findFirst({
     }
-
-  } catch (error) {  
+  } catch (error) {
     spinner.stop();
     const errorMessage =
       error instanceof Error
         ? error.message
         : typeof error === "string"
-        ? error
-        : JSON.stringify(error);
-    logger.error(
-      `Unexpected error during device authorization: ${errorMessage}`
-    );
+          ? error
+          : JSON.stringify(error);
+    logger.error(`Unexpected error during device authorization: ${errorMessage}`);
     process.exit(1);
   }
 
@@ -185,7 +174,7 @@ export async function loginAction(opts: Record<string, unknown>) {
         try {
           const { data, error } = await (authClient as any).device.token({
             grant_type: "urn:ietf:params:oauth:grant-type:device_code",
-            device_code:device_code,
+            device_code: device_code,
             client_id: clientId,
             fetchOptions: {
               headers: {
@@ -198,8 +187,7 @@ export async function loginAction(opts: Record<string, unknown>) {
             spinner.stop();
             resolve(data);
             return;
-          }
-          else if (error){
+          } else if (error) {
             switch (error.error) {
               case "authorization_pending":
                 // Continue polling
@@ -221,7 +209,9 @@ export async function loginAction(opts: Record<string, unknown>) {
           }
         } catch (error) {
           spinner.stop();
-          logger.error(`Unexpected error during device authorization: ${error instanceof Error ? error.message : String(error)}`);
+          logger.error(
+            `Unexpected error during device authorization: ${error instanceof Error ? error.message : String(error)}`
+          );
           process.exit(1);
         }
         setTimeout(poll, pollingInterval * 1000);
@@ -231,14 +221,97 @@ export async function loginAction(opts: Record<string, unknown>) {
   }
 }
 
+export async function logutAction() {
+  intro(chalk.bold("logout from the Better Auth CLI"));
+  const token = await getStoredToken();
+  if (!token) {
+    console.log(chalk.yellow("you are not logged in"));
+    process.exit(0);
+  }
+  const shouldLogout = await confirm({
+    message: "Are you sure you want to logout?",
+    initialValue: false,
+  });
+  if (isCancel(shouldLogout) || !shouldLogout) {
+    cancel(chalk.red("Logout cancelled"));
+    process.exit(0);
+  }
+  const cleared = await clearStoredToken();
+
+  if (cleared) {
+    outro(chalk.green("You have been logged out successfully"));
+  } else {
+    logger.error("Failed to logout");
+    console.log(chalk.red("could not clear token file "));
+  }
+}
+
+export async function whoamiAction(opts: Record<string, unknown>) {
+  // to access db directly
+  const optionsSchema = z.object({
+    serverUrl: z.string().optional(),
+  });
+
+  const options = optionsSchema.parse(opts);
+  const serverUrl = options.serverUrl || URL;
+
+  const token = await requiredAuth();
+  if (!token?.access_token) {
+    console.log(chalk.red("you are not logged in"));
+    process.exit(1);
+  }
+
+  try {
+    const response = await fetch(`${serverUrl}/api/me`, {
+      headers: {
+        Authorization: `Bearer ${token.access_token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        console.log(chalk.red("Authentication failed. Please login again."));
+        process.exit(1);
+      }
+      throw new Error(`Failed to fetch user info: ${response.statusText}`);
+    }
+
+    const session = await response.json();
+    const user = session?.user;
+
+    if (!user) {
+      console.log(chalk.red("User information not found"));
+      process.exit(1);
+    }
+
+    // output user info
+    console.log(
+      chalk.bold.greenBright(
+        `\n user: ${user?.name || "N/A"}\n email: ${user?.email || "N/A"}\n id: ${user?.id || "N/A"}`
+      )
+    );
+  } catch (error) {
+    logger.error(
+      `Failed to get user information: ${error instanceof Error ? error.message : String(error)}`
+    );
+    process.exit(1);
+  }
+}
+
 // -------------Login Command Setup -------------
 
 export const login = new Command("login")
   .description("Login to the Better Auth CLI")
   .option("--server-url <url>", "The URL of the Better Auth server", URL)
-  .option(
-    "--client-id <id>",
-    "The Client ID of the Better Auth server",
-    CLIENT_ID
-  )
+  .option("--client-id <id>", "The Client ID of the Better Auth server", CLIENT_ID)
   .action(loginAction);
+
+export const logout = new Command("logout")
+  .description("Logout from the Better Auth CLI")
+  .action(logutAction);
+
+export const whoami = new Command("whoami")
+  .description("Show the current user")
+  .option("--server-url <url>", "The URL of the Better Auth server", URL)
+  .action(whoamiAction);

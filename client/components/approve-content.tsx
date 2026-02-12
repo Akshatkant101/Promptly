@@ -20,7 +20,15 @@ export default function DeviceApprovalContent() {
 
   if (isPending) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-background">
+      <div
+        style={{
+          backgroundImage: "url('/Oops!.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+        className="flex flex-col items-center justify-center h-screen"
+      >
         <Spinner />
       </div>
     );
@@ -60,8 +68,16 @@ export default function DeviceApprovalContent() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background font-sans">
-      <div className="w-full max-w-md px-4">
+    <div
+      style={{
+        backgroundImage: "url('/Oops!.jpg')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+      className="flex min-h-screen items-center justify-center font-sans px-4"
+    >
+      <div className="w-full max-w-md">
         <div className="space-y-8">
           {/* Header Card */}
           <div className="border-2 border-dashed border-zinc-700 rounded-2xl p-8 bg-zinc-900/50 backdrop-blur-sm text-center">

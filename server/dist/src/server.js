@@ -12,6 +12,44 @@ app.use(cors({
 app.all("/api/auth/*splat", toNodeHandler(auth));
 app.use(express.json());
 app.get("/api/me", async (req, res) => {
+    // Check for Bearer token in Authorization header (for CLI)
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+        const token = authHeader.substring(7);
+        try {
+            // Find session by token
+            const session = await auth.api.getSession({
+                headers: fromNodeHeaders(req.headers),
+            });
+            // If session not found via cookie, try to find user by token
+            if (!session?.user) {
+                const { prisma } = await import("../lib/prisma.js");
+                const sessionRecord = await prisma.session.findUnique({
+                    where: { token },
+                    include: { user: true },
+                });
+                if (sessionRecord && sessionRecord.user) {
+                    return res.json({
+                        session: {
+                            id: sessionRecord.id,
+                            userId: sessionRecord.userId,
+                            expiresAt: sessionRecord.expiresAt,
+                        },
+                        user: {
+                            id: sessionRecord.user.id,
+                            email: sessionRecord.user.email,
+                            name: sessionRecord.user.name,
+                            image: sessionRecord.user.image,
+                        },
+                    });
+                }
+            }
+        }
+        catch (error) {
+            return res.status(401).json({ error: "Invalid token" });
+        }
+    }
+    // Fall back to cookie-based session
     const session = await auth.api.getSession({
         headers: fromNodeHeaders(req.headers),
     });
