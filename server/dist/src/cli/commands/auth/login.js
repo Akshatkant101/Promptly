@@ -193,6 +193,7 @@ export async function logutAction() {
     }
 }
 export async function whoamiAction(opts) {
+    // to access db directly
     const optionsSchema = z.object({
         serverUrl: z.string().optional(),
     });
@@ -224,7 +225,7 @@ export async function whoamiAction(opts) {
             process.exit(1);
         }
         // output user info
-        console.log(chalk.bold.greenBright(`\n user: ${user?.name || "N/A"} email: ${user?.email || "N/A"} id: ${user?.id || "N/A"}`));
+        console.log(chalk.bold.greenBright(`\n user: ${user?.name || "N/A"}\n email: ${user?.email || "N/A"}\n id: ${user?.id || "N/A"}`));
     }
     catch (error) {
         logger.error(`Failed to get user information: ${error instanceof Error ? error.message : String(error)}`);
