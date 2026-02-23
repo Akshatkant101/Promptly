@@ -1,8 +1,8 @@
-import {google} from "@ai-sdk/google";
-import {streamText, generateObject} from "ai";
-import {config} from "../../config/google.config.js";
+import { google } from "@ai-sdk/google";
+import { streamText, generateObject } from "ai";
+import { config } from "../../config/google.config.js";
 import chalk from "chalk";
-import type {z} from "zod";
+import type { z } from "zod";
 
 type Message = {
   role: "user" | "assistant" | "system";
@@ -10,20 +10,20 @@ type Message = {
 };
 
 export class AIService {
-    model: ReturnType<typeof google>;
-    
-    constructor() {
-        if(!config.googleApikey){
-            throw new Error(chalk.red("Google API key is not set"));
-        }
+  model: ReturnType<typeof google>;
 
-        // Set the API key as environment variable for @ai-sdk/google
-        const apiKey= config.googleApikey;
-        
-        this.model = google(config.model);
+  constructor() {
+    if (!config.googleApikey) {
+      throw new Error(chalk.red("Google API key is not set"));
     }
 
-    /**
+    // Set the API key as environment variable for @ai-sdk/google
+    const apiKey = config.googleApikey;
+
+    this.model = google(config.model);
+  }
+
+  /**
    * Send a message and get streaming response
    * @param {Array} messages - Array of message objects {role, content}
    * @param {Function} onChunk - Callback for each text chunk
@@ -31,19 +31,22 @@ export class AIService {
    * @param {Function} onToolCall - Callback for tool calls
    * @returns {Promise<Object>} Full response with content, tool calls, and usage
    */
-  async sendMessage(messages: Message[], onChunk?: (chunk: string) => void, tools?: unknown, onToolCall?: unknown) {
+  async sendMessage(
+    messages: Message[],
+    onChunk?: (chunk: string) => void,
+    tools?: unknown,
+    onToolCall?: unknown
+  ) {
     try {
       const streamConfig = {
         model: this.model,
         messages: messages,
-        
       };
 
-
       const result = streamText(streamConfig);
-      
+
       let fullResponse = "";
-      
+
       // Stream text chunks
       for await (const chunk of result.textStream) {
         fullResponse += chunk;
@@ -52,7 +55,7 @@ export class AIService {
         }
       }
 
-      const fullResult =  result;
+      const fullResult = result;
 
       return {
         content: fullResponse,
@@ -76,9 +79,13 @@ export class AIService {
    */
   async getMessage(messages: Message[], tools?: unknown) {
     let fullResponse = "";
-    const result = await this.sendMessage(messages, (chunk: string) => {
-      fullResponse += chunk;
-    }, tools);
+    const result = await this.sendMessage(
+      messages,
+      (chunk: string) => {
+        fullResponse += chunk;
+      },
+      tools
+    );
     return result.content;
   }
 
@@ -95,7 +102,7 @@ export class AIService {
         schema: schema,
         prompt: prompt,
       });
-      
+
       return result.object;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);

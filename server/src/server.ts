@@ -28,7 +28,7 @@ app.get("/api/me", async (req, res) => {
       const session = await auth.api.getSession({
         headers: fromNodeHeaders(req.headers),
       });
-      
+
       // If session not found via cookie, try to find user by token
       if (!session?.user) {
         const { prisma } = await import("../lib/prisma.js");
@@ -36,7 +36,7 @@ app.get("/api/me", async (req, res) => {
           where: { token },
           include: { user: true },
         });
-        
+
         if (sessionRecord && sessionRecord.user) {
           return res.json({
             session: {
@@ -57,7 +57,7 @@ app.get("/api/me", async (req, res) => {
       return res.status(401).json({ error: "Invalid token" });
     }
   }
-  
+
   // Fall back to cookie-based session
   const session = await auth.api.getSession({
     headers: fromNodeHeaders(req.headers),
