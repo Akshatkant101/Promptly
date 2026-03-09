@@ -143,6 +143,23 @@ npm run build
 npm link
 ```
 
+> ⚠️ **Important:** You must run `npm run build` before using the CLI. TypeScript is not directly supported in CLI applications, so the project needs to be compiled to JavaScript first.
+
+> 🔧 **Troubleshooting:**
+>
+> - If the CLI doesn't run after installation, set your API key directly in the terminal and then run the command:
+>
+>   ```powershell
+>   $env:GOOGLE_GENERATIVE_AI_API_KEY="YOUR_API_KEY"
+>   coremind
+>   ```
+>
+> - If you are unable to login, pass your GitHub OAuth Client ID explicitly:
+>
+>   ```bash
+>   coremind login --client-id YOUR_GITHUB_CLIENT_ID
+>   ```
+
 ### Commands
 
 | Command            | Description                       |
