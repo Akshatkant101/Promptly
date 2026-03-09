@@ -2,7 +2,7 @@ import { google } from "@ai-sdk/google";
 import { streamText, generateObject } from "ai";
 import { config } from "../../config/google.config.js";
 import chalk from "chalk";
-import type { z } from "zod";
+import { object, type z } from "zod";
 
 type Message = {
   role: "user" | "assistant" | "system";
@@ -35,13 +35,20 @@ export class AIService {
     messages: Message[],
     onChunk?: (chunk: string) => void,
     tools?: unknown,
-    onToolCall?: unknown
+    onToolCall?: (toolCall: any) => void
   ) {
     try {
       const streamConfig = {
         model: this.model,
         messages: messages,
       };
+
+      if (tools && Object.keys(tools).length > 0) {
+        (streamConfig as any).tools = tools;
+        (streamConfig as any).maxSteps = 5;
+
+        console.log(chalk.gray(`[DEBUG] Tools enabled: ${Object.keys(tools).join(", ")}`));
+      }
 
       const result = streamText(streamConfig);
 
@@ -57,10 +64,34 @@ export class AIService {
 
       const fullResult = result;
 
+      const toolCalls = [];
+      const toolResults = [];
+
+      // Collect tool calls from all steps (if they exist)
+      if (fullResult.steps && Array.isArray(fullResult.steps)) {
+        for (const step of fullResult.steps) {
+          if (step.toolCalls && step.toolCalls.length > 0) {
+            for (const toolCall of step.toolCalls) {
+              toolCalls.push(toolCall);
+              if (onToolCall) {
+                onToolCall(toolCall);
+              }
+            }
+          }
+
+          // Collect tool results
+          if (step.toolResults && step.toolResults.length > 0) {
+            toolResults.push(...step.toolResults);
+          }
+        }
+      }
+
       return {
         content: fullResponse,
         finishReason: fullResult.finishReason,
         usage: fullResult.usage,
+        toolCalls,
+        toolResults,
         steps: fullResult.steps,
       };
     } catch (error) {

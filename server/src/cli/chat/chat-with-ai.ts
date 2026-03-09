@@ -199,7 +199,6 @@ async function updateConversationTitle(
   }
 }
 
-
 async function chatLoops(conversation: {
   id: string;
   userId: string;

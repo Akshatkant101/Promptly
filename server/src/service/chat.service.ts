@@ -27,7 +27,7 @@ export class ChatService {
 
   async getOrCreateConversation(
     userId: string,
-    conversationId: null,
+    conversationId: string | null,
     mode: "chat" | "tool" | "agent"
   ) {
     if (conversationId) {
@@ -47,8 +47,10 @@ export class ChatService {
       if (conversation) {
         return conversation;
       }
-      return await this.createConversation(userId, mode, null);
     }
+
+    // If no conversationId provided or not found, create a new one
+    return await this.createConversation(userId, mode, null);
   }
 
   /**

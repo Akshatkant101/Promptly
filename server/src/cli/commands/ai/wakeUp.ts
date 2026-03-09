@@ -5,6 +5,7 @@ import { prisma } from "../../../../lib/prisma.js";
 import { select } from "@clack/prompts";
 import { getStoredToken } from "../../../../lib/token.js";
 import { startChat } from "../../chat/chat-with-ai.js";
+import { startToolChat } from "../../chat/chat-with-ai-tool.js";
 
 const wakeUpAction = async () => {
   const token = await getStoredToken();
@@ -86,10 +87,10 @@ const wakeUpAction = async () => {
 
   switch (choice) {
     case "chat":
-      startChat("chat");
+      await startChat("chat");
       break;
     case "tools":
-      console.log(chalk.green("Use Tools"));
+      await startToolChat();
       break;
     case "agent":
       console.log(chalk.green("Agent Mode"));
