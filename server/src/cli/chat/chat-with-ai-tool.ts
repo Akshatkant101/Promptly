@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import boxen from "boxen";
-import { isCancel, cancel, intro, outro, text,multiselect } from "@clack/prompts";
+import { isCancel, cancel, intro, outro, text, multiselect } from "@clack/prompts";
 import yoctoSpinner from "yocto-spinner";
 import { marked } from "marked";
 import { markedTerminal } from "marked-terminal";
@@ -8,7 +8,14 @@ import { AIService } from "../ai/google-service.js";
 import { ChatService } from "../../service/chat.service.js";
 import { getStoredToken } from "../../../lib/token.js";
 import { prisma } from "../../../lib/prisma.js";
-import { availableTools, getEnabledTools, toggleTool, enableTools,getEnabledToolNames,resetTools } from "../../config/tool.config.js";
+import {
+  availableTools,
+  getEnabledTools,
+  toggleTool,
+  enableTools,
+  getEnabledToolNames,
+  resetTools,
+} from "../../config/tool.config.js";
 
 marked.use(
   markedTerminal({
@@ -67,20 +74,19 @@ export async function startToolChat(conversationId = null) {
     );
 
     const user = await getUserFromToken();
-    
+
     // Select tools
     await selectTools();
-    
+
     const conversation = await initConversation(user.id, conversationId, "tool");
     await chatLoop(conversation);
-    
+
     // Reset tools on exit
     resetTools();
-    
+
     outro(chalk.green("✨ Thanks for using tools!"));
   } catch (error: unknown) {
-    const errorMessage =
-      error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     const errorBox = boxen(chalk.red(`❌ Error: ${errorMessage}`), {
       padding: 1,
       margin: 1,
@@ -92,12 +98,10 @@ export async function startToolChat(conversationId = null) {
     process.exit(1);
   }
 }
-async function chatLoop(
-  conversation: { id: string }
-) {
+async function chatLoop(conversation: { id: string }) {
   const enabledToolNames = getEnabledToolNames();
   const helpBox = boxen(
-    `${chalk.gray('• Type your message and press Enter')}\n${chalk.gray('• AI has access to:')} ${enabledToolNames.length > 0 ? enabledToolNames.join(", ") : "No tools"}\n${chalk.gray('• Type "exit" to end conversation')}\n${chalk.gray('• Press Ctrl+C to quit anytime')}`,
+    `${chalk.gray("• Type your message and press Enter")}\n${chalk.gray("• AI has access to:")} ${enabledToolNames.length > 0 ? enabledToolNames.join(", ") : "No tools"}\n${chalk.gray('• Type "exit" to end conversation')}\n${chalk.gray("• Press Ctrl+C to quit anytime")}`,
     {
       padding: 1,
       margin: { bottom: 1 },
@@ -106,7 +110,7 @@ async function chatLoop(
       dimBorder: true,
     }
   );
-  
+
   console.log(helpBox);
 
   while (true) {
@@ -161,9 +165,9 @@ async function chatLoop(
 }
 
 async function getAIResponse(conversationId: string) {
-  const spinner = yoctoSpinner({ 
-    text: "AI is thinking...", 
-    color: "cyan" 
+  const spinner = yoctoSpinner({
+    text: "AI is thinking...",
+    color: "cyan",
   }).start();
 
   const dbMessages = await chatService.getMessages(conversationId);
@@ -173,15 +177,15 @@ async function getAIResponse(conversationId: string) {
   }>;
 
   const tools = getEnabledTools() as any[];
-  
+
   let fullResponse = "";
   let isFirstChunk = true;
   const toolCallsDetected: any[] = [];
-  
+
   try {
     // IMPORTANT: Pass tools in the streamText config
     const result = await aiService.sendMessage(
-      aiMessages, 
+      aiMessages,
       (chunk) => {
         if (isFirstChunk) {
           spinner.stop();
@@ -198,14 +202,17 @@ async function getAIResponse(conversationId: string) {
         toolCallsDetected.push(toolCall);
       }
     );
-    
+
     // Display tool calls if any
     if (toolCallsDetected.length > 0) {
       console.log("\n");
       const toolCallBox = boxen(
-        toolCallsDetected.map(tc => 
-          `${chalk.cyan("🔧 Tool:")} ${tc.toolName}\n${chalk.gray("Args:")} ${JSON.stringify(tc.args, null, 2)}`
-        ).join("\n\n"),
+        toolCallsDetected
+          .map(
+            (tc) =>
+              `${chalk.cyan("🔧 Tool:")} ${tc.toolName}\n${chalk.gray("Args:")} ${JSON.stringify(tc.args, null, 2)}`
+          )
+          .join("\n\n"),
         {
           padding: 1,
           margin: 1,
@@ -220,9 +227,12 @@ async function getAIResponse(conversationId: string) {
     // Display tool results if any
     if (result.toolResults && result.toolResults.length > 0) {
       const toolResultBox = boxen(
-        result.toolResults.map(tr => 
-          `${chalk.green("✅ Tool:")} ${tr.toolName}\n${chalk.gray("Result:")} ${JSON.stringify(tr.result, null, 2).slice(0, 200)}...`
-        ).join("\n\n"),
+        result.toolResults
+          .map(
+            (tr) =>
+              `${chalk.green("✅ Tool:")} ${tr.toolName}\n${chalk.gray("Result:")} ${JSON.stringify(tr.result, null, 2).slice(0, 200)}...`
+          )
+          .join("\n\n"),
         {
           padding: 1,
           margin: 1,
@@ -233,14 +243,14 @@ async function getAIResponse(conversationId: string) {
       );
       console.log(toolResultBox);
     }
-    
+
     // Render markdown response
     console.log("\n");
     const renderedMarkdown = marked.parse(fullResponse);
     console.log(renderedMarkdown);
     console.log(chalk.gray("─".repeat(60)));
     console.log("\n");
-    
+
     return result.content;
   } catch (error) {
     spinner.error("Failed to get AI response");
@@ -254,12 +264,8 @@ async function initConversation(
   mode: "chat" | "tool" | "agent" = "tool"
 ) {
   const spinner = yoctoSpinner({ text: "Initializing conversation..." }).start();
-  
-  let tempConversation = await chatService.getOrCreateConversation(
-    userId,
-    conversationId,
-    mode
-  );
+
+  let tempConversation = await chatService.getOrCreateConversation(userId, conversationId, mode);
 
   let conversationIdToFetch: string;
   if (!tempConversation) {
@@ -286,13 +292,14 @@ async function initConversation(
   }
 
   spinner.success("Conversation loaded");
-  
+
   // Get enabled tool names for display
   const enabledToolNames = getEnabledToolNames();
-  const toolsDisplay = enabledToolNames.length > 0 
-    ? `\n${chalk.gray("Active Tools:")} ${enabledToolNames.join(", ")}`
-    : `\n${chalk.gray("No tools enabled")}`;
-  
+  const toolsDisplay =
+    enabledToolNames.length > 0
+      ? `\n${chalk.gray("Active Tools:")} ${enabledToolNames.join(", ")}`
+      : `\n${chalk.gray("No tools enabled")}`;
+
   // Display conversation info in a box
   const conversationInfo = boxen(
     `${chalk.bold("Conversation")}: ${conversation.title}\n${chalk.gray("ID: " + conversation.id)}\n${chalk.gray("Mode: " + conversation.mode)}${toolsDisplay}`,
@@ -305,15 +312,15 @@ async function initConversation(
       titleAlignment: "center",
     }
   );
-  
+
   console.log(conversationInfo);
-  
+
   // Display existing messages if any
   if (conversation.messages?.length > 0) {
     console.log(chalk.yellow("📜 Previous messages:\n"));
     await displayMessages(conversation.messages);
   }
-  
+
   return conversation;
 }
 
@@ -362,7 +369,7 @@ async function updateConversationTitle(
 }
 
 async function selectTools() {
-  const toolOptions = availableTools.map(tool => ({
+  const toolOptions = availableTools.map((tool) => ({
     value: tool.id,
     label: tool.name,
     hint: tool.description,
@@ -386,11 +393,15 @@ async function selectTools() {
     console.log(chalk.yellow("\n⚠️  No tools selected. AI will work without tools.\n"));
   } else {
     const toolsBox = boxen(
-      chalk.green(`✅ Enabled tools:\n${selectedTools.map(id => {
-        const tool = availableTools.find(t => t.id === id);
-        const toolName = tool ? tool.name : String(id);
-        return `  • ${toolName}`;
-      }).join('\n')}`),
+      chalk.green(
+        `✅ Enabled tools:\n${selectedTools
+          .map((id) => {
+            const tool = availableTools.find((t) => t.id === id);
+            const toolName = tool ? tool.name : String(id);
+            return `  • ${toolName}`;
+          })
+          .join("\n")}`
+      ),
       {
         padding: 1,
         margin: { top: 1, bottom: 1 },
@@ -405,5 +416,3 @@ async function selectTools() {
 
   return selectedTools.length > 0;
 }
-
-

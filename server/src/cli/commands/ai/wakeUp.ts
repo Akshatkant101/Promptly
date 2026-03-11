@@ -6,6 +6,7 @@ import { select } from "@clack/prompts";
 import { getStoredToken } from "../../../../lib/token.js";
 import { startChat } from "../../chat/chat-with-ai.js";
 import { startToolChat } from "../../chat/chat-with-ai-tool.js";
+import { startAgentChat } from "../../chat/chat-with-ai-agent.js";
 
 const wakeUpAction = async () => {
   const token = await getStoredToken();
@@ -93,7 +94,7 @@ const wakeUpAction = async () => {
       await startToolChat();
       break;
     case "agent":
-      console.log(chalk.green("Agent Mode"));
+      await startAgentChat();
       break;
     case "exit":
       console.log(chalk.green("Exiting..."));
