@@ -147,7 +147,21 @@ npm link
 
 > 🔧 **Troubleshooting:**
 >
-> - If the CLI doesn't run after installation, set your API key directly in the terminal and then run the command:
+> - If the CLI throws an error saying a certain environment variable is not set, you can set it directly in your terminal:
+>
+>   **PowerShell:**
+>
+>   ```powershell
+>   $env:VARIABLE_NAME="your_value"
+>   ```
+>
+>   **Bash / Zsh:**
+>
+>   ```bash
+>   export VARIABLE_NAME="your_value"
+>   ```
+>
+>   For example, if `GOOGLE_GENERATIVE_AI_API_KEY` is missing:
 >
 >   ```powershell
 >   $env:GOOGLE_GENERATIVE_AI_API_KEY="YOUR_API_KEY"
